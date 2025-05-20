@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', function () {
   (async function initializeCesium() {
       try {
           // Charge le fichier config.json
-          const response = await fetch("./js/config.json");
+          const response = await fetch("./src/js/config.json");
           if (!response.ok) {
               throw new Error(`Erreur lors du chargement de config.json : ${response.statusText}`);
           }
