@@ -76,7 +76,6 @@ document.addEventListener('DOMContentLoaded', function () {
       loadModel(viewer, "./src/models/Demolitions.glb", { longitude: 7.3476689118966965, latitude: 46.22494365977509, altitude: 0 }, -90, "#ff0000", 1.0);
       loadModel(viewer, "./src/models/BatimentsExistants.glb", { longitude: 7.3476689118966965, latitude: 46.22494365977509, altitude: 0 }, -90, "#ffff00", 1.0);
       loadModel(viewer, "./src/models/Ols.gltf", { longitude: 7.37761997091807, latitude: 46.230961504973, altitude: 53 }, -90, "#0000ff", 1.0);
-      loadModel(viewer, "./src/models/PlafondAerien.gltf", { longitude: 7.34045639023838, latitude: 46.221368116825, altitude: 482.39999988 }, -90, "#ff00ff", 1.0);
 
       // Fly to initial camera position
       viewer.camera.flyTo({
