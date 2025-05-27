@@ -1,10 +1,9 @@
 document.addEventListener('DOMContentLoaded', function () {
   console.log("📄 DOM chargé, chargement de config.json...");
 
-  // Utilisation d'une fonction asynchrone séparée
   (async function initializeCesium() {
     try {
-      // Charge le fichier config.json
+      // Load config.json
       const response = await fetch("./src/js/config.json");
       if (!response.ok) {
         throw new Error(`Erreur lors du chargement de config.json : ${response.statusText}`);
@@ -12,7 +11,7 @@ document.addEventListener('DOMContentLoaded', function () {
       const config = await response.json();
       console.log("✅ config.json chargé :", config);
 
-      // Applique le token à Cesium
+      // Apply Cesium Ion token
       Cesium.Ion.defaultAccessToken = config.CESIUM_ION_ACCESS_TOKEN;
 
       console.log("🌍 Initialisation du terrain avec swisstopo...");
@@ -20,7 +19,6 @@ document.addEventListener('DOMContentLoaded', function () {
         url: "https://3d.geo.admin.ch/ch.swisstopo.terrain.3d/v1"
       });
 
-      // Ajout du fond de carte personnalisé
       const imageryProvider = new Cesium.UrlTemplateImageryProvider({
         url: "https://wmts10.geo.admin.ch/1.0.0/ch.swisstopo.swisstlm3d-karte-farbe.3d/default/current/4326/{z}/{x}/{y}.jpeg",
         credit: "© swisstopo",
@@ -28,7 +26,6 @@ document.addEventListener('DOMContentLoaded', function () {
         maximumLevel: 18
       });
 
-      // Initialisation du viewer Cesium
       const viewer = new Cesium.Viewer("cesiumContainer", {
         terrainProvider: terrain,
         imageryProvider: imageryProvider,
@@ -44,105 +41,50 @@ document.addEventListener('DOMContentLoaded', function () {
 
       console.log("✅ Viewer initialisé");
 
-      // Activer le terrain pour le clamping
+      // Enable depth testing against terrain
       viewer.scene.globe.depthTestAgainstTerrain = true;
 
-      // Charger le modèle NouveauxBatiments.glb
-      const modelUrl = "./src/models/NouveauxBatiments.glb";
-      const modelPosition = Cesium.Cartesian3.fromDegrees(7.3476689118966965, 46.22494365977509, 0);
+      // Function to load a model
+      function loadModel(viewer, url, position, rotationAngle, color, scale) {
+        const modelPosition = Cesium.Cartesian3.fromDegrees(position.longitude, position.latitude, position.altitude);
+        let modelMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(modelPosition);
 
-      // Créer la matrice de transformation de base
-      let modelMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(modelPosition);
+        // Apply rotation
+        const rotationMatrix = Cesium.Matrix3.fromRotationZ(Cesium.Math.toRadians(rotationAngle));
+        modelMatrix = Cesium.Matrix4.multiplyByMatrix3(modelMatrix, rotationMatrix, new Cesium.Matrix4());
 
-      // Appliquer une rotation de 45 degrés autour de l'axe Z pour orienter vers le nord-est
-      const rotationMatrix = Cesium.Matrix3.fromRotationZ(Cesium.Math.toRadians(-90)); // Rotation de 90
-      modelMatrix = Cesium.Matrix4.multiplyByMatrix3(modelMatrix, rotationMatrix, new Cesium.Matrix4());
+        // Load the model
+        Cesium.Model.fromGltfAsync({
+          url: url,
+          modelMatrix: modelMatrix,
+          scale: scale
+        }).then((model) => {
+          viewer.scene.primitives.add(model);
+          console.log(`✅ Modèle chargé : ${url}`);
 
-      Cesium.Model.fromGltfAsync({
-        url: modelUrl,
-        modelMatrix: modelMatrix,
-        scale: 1.0 // Ajustez l'échelle si nécessaire
-      }).then((model) => {
-        viewer.scene.primitives.add(model);
-        console.log("✅ Modèle NouveauxBatiments.glb chargé");
-
-        // Modification de la couleur et de la transparence du modèle
-        model.color = Cesium.Color.fromCssColorString("#008000").withAlpha(0.5);
-
-      }).catch((error) => {
-        console.error("❌ Erreur lors du chargement du modèle NouveauxBatiments.glb :", error);
-      });
-
-      // Enregistre les événements de la caméra
-      viewer.camera.changed.addEventListener(() => {
-        const cartographic = Cesium.Cartographic.fromCartesian(viewer.camera.position);
-        const latitude = Cesium.Math.toDegrees(cartographic.latitude).toFixed(6);
-        const longitude = Cesium.Math.toDegrees(cartographic.longitude).toFixed(6);
-        const height = cartographic.height.toFixed(2);
-
-        const heading = Cesium.Math.toDegrees(viewer.camera.heading).toFixed(2);
-        const pitch = Cesium.Math.toDegrees(viewer.camera.pitch).toFixed(2);
-        const roll = Cesium.Math.toDegrees(viewer.camera.roll).toFixed(2);
-
-        // Enregistre les paramètres de la caméra dans la console
-        console.log(`Camera Settings:
-          Latitude: ${latitude}°
-          Longitude: ${longitude}°
-          Height: ${height}m
-          Heading: ${heading}°
-          Pitch: ${pitch}°
-          Roll: ${roll}°`);
-
-        // Affiche les paramètres de la caméra dans le conteneur HTML
-        document.getElementById("latitude").textContent = latitude;
-        document.getElementById("longitude").textContent = longitude;
-        document.getElementById("height").textContent = height;
-        document.getElementById("heading").textContent = heading;
-        document.getElementById("pitch").textContent = pitch;
-        document.getElementById("roll").textContent = roll;
-      });
-
-      // Bâtiments 3D
-      const buildingsTileset = viewer.scene.primitives.add(
-        new Cesium.Cesium3DTileset({
-          url: "https://3d.geo.admin.ch/ch.swisstopo.swissbuildings3d.3d/v1/tileset.json"
-        })
-      );
-
-      buildingsTileset.readyPromise
-        .then(() => {
-          console.log("🏙️ Bâtiments 3D chargés");
-          // Clamping des bâtiments au terrain
-          buildingsTileset.root.transform = Cesium.Matrix4.IDENTITY;
-        })
-        .catch((error) => {
-          console.error("❌ Erreur chargement bâtiments :", error);
+          // Apply color and transparency
+          if (color) {
+            model.color = Cesium.Color.fromCssColorString(color).withAlpha(0.7);
+          }
+        }).catch((error) => {
+          console.error(`❌ Erreur lors du chargement du modèle ${url} :`, error);
         });
+      }
 
-      // Végétation 3D
-      const vegetationTileset = viewer.scene.primitives.add(
-        new Cesium.Cesium3DTileset({
-          url: "https://3d.geo.admin.ch/ch.swisstopo.vegetation.3d/v1/tileset.json"
-        })
-      );
+      // Add multiple models
+      loadModel(viewer, "./src/models/NouveauxBatiments.glb", { longitude: 7.3476689118966965, latitude: 46.22494365977509, altitude: 0 }, -90, "#008000", 1.0);
+      loadModel(viewer, "./src/models/Demolitions.glb", { longitude: 7.3476689118966965, latitude: 46.22494365977509, altitude: 0 }, -90, "#ff0000", 1.0);
+      loadModel(viewer, "./src/models/BatimentsExistants.glb", { longitude: 7.3476689118966965, latitude: 46.22494365977509, altitude: 0 }, -90, "#ffff00", 1.0);
+      loadModel(viewer, "./src/models/Ols.gltf", { longitude: 7.37761997091807, latitude: 46.230961504973, altitude: 53 }, -90, "#0000ff", 1.0);
+      loadModel(viewer, "./src/models/PlafondAerien.gltf", { longitude: 7.34045639023838, latitude: 46.221368116825, altitude: 482.39999988 }, -90, "#ff00ff", 1.0);
 
-      vegetationTileset.readyPromise
-        .then(() => {
-          console.log("🌲 Végétation 3D chargée");
-          // Clamping de la végétation au terrain
-          vegetationTileset.root.transform = Cesium.Matrix4.IDENTITY;
-        })
-        .catch((error) => {
-          console.error("❌ Erreur chargement végétation :", error);
-        });
-
-      // Paramètres de la caméra
+      // Fly to initial camera position
       viewer.camera.flyTo({
         destination: Cesium.Cartesian3.fromDegrees(7.331314, 46.219879, 812.59),
         orientation: {
           heading: Cesium.Math.toRadians(77.84),
           pitch: Cesium.Math.toRadians(-10.22),
-          roll: Cesium.Math.toRadians(360.00)
+          roll: Cesium.Math.toRadians(0)
         }
       });
 
