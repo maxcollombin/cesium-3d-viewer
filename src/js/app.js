@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', function () {
       const viewer = new Cesium.Viewer("cesiumContainer", {
         terrainProvider: terrain,
         imageryProvider: imageryProvider,
-        baseLayerPicker: false,
+        baseLayerPicker: true,
         fullscreenButton: false,
         homeButton: false,
         sceneModePicker: false,
@@ -75,7 +75,59 @@ document.addEventListener('DOMContentLoaded', function () {
       loadModel(viewer, "./src/models/NouveauxBatiments.glb", { longitude: 7.3476689118966965, latitude: 46.22494365977509, altitude: 0 }, -90, "#008000", 1.0);
       loadModel(viewer, "./src/models/Demolitions.glb", { longitude: 7.3476689118966965, latitude: 46.22494365977509, altitude: 0 }, -90, "#ff0000", 1.0);
       loadModel(viewer, "./src/models/BatimentsExistants.glb", { longitude: 7.3476689118966965, latitude: 46.22494365977509, altitude: 0 }, -90, "#ffff00", 1.0);
-      loadModel(viewer, "./src/models/Ols.gltf", { longitude: 7.37761997091807, latitude: 46.230961504973, altitude: 53 }, -90, "#0000ff", 1.0);
+
+      // Add the TopBoundary 3D Tileset
+      const tileset = new Cesium.Cesium3DTileset({
+        url: "./src/models/TopBoundary/tileset.json"
+      });
+
+      tileset.readyPromise
+        .then(() => {
+          console.log("✅ TopBoundary tileset chargé");
+          viewer.scene.primitives.add(tileset);
+
+        // Tileset styling
+        tileset.style = new Cesium.Cesium3DTileStyle({
+          color: "color('#87ceeb', 0.8)",
+          show: "true",
+        });
+        })
+        .catch((error) => {
+          console.error("❌ Erreur lors du chargement du TopBoundary tileset :", error);
+        });
+
+        // Bâtiments 3D
+        const buildingsTileset = viewer.scene.primitives.add(
+          new Cesium.Cesium3DTileset({
+            url: "https://3d.geo.admin.ch/ch.swisstopo.swissbuildings3d.3d/v1/tileset.json"
+          })
+        );
+        // Wait for the buildings tileset to be ready
+        buildingsTileset.readyPromise
+          .then(() => {
+            console.log("🏙️ Bâtiments 3D chargés");
+            // Clamping des bâtiments au terrain
+            buildingsTileset.root.transform = Cesium.Matrix4.IDENTITY;
+          })
+          .catch((error) => {
+            console.error("❌ Erreur chargement bâtiments :", error);
+
+          });
+        // Végétation 3D
+        const vegetationTileset = viewer.scene.primitives.add(
+          new Cesium.Cesium3DTileset({
+            url: "https://3d.geo.admin.ch/ch.swisstopo.vegetation.3d/v1/tileset.json"
+          })
+        );
+        vegetationTileset.readyPromise
+          .then(() => {
+            console.log("🌲 Végétation 3D chargée");
+            // Clamping de la végétation au terrain
+            vegetationTileset.root.transform = Cesium.Matrix4.IDENTITY;
+          })
+          .catch((error) => {
+            console.error("❌ Erreur chargement végétation :", error);
+          });
 
       // Fly to initial camera position
       viewer.camera.flyTo({
