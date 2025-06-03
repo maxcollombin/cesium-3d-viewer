@@ -48,47 +48,77 @@ document.addEventListener('DOMContentLoaded', function () {
       function loadModel(viewer, url, position, rotationAngle, color, scale) {
         const modelPosition = Cesium.Cartesian3.fromDegrees(position.longitude, position.latitude, position.altitude);
         let modelMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(modelPosition);
-
+      
         // Apply rotation
         const rotationMatrix = Cesium.Matrix3.fromRotationZ(Cesium.Math.toRadians(rotationAngle));
         modelMatrix = Cesium.Matrix4.multiplyByMatrix3(modelMatrix, rotationMatrix, new Cesium.Matrix4());
-
+      
         // Load the model
-        Cesium.Model.fromGltfAsync({
+        return Cesium.Model.fromGltfAsync({
           url: url,
           modelMatrix: modelMatrix,
           scale: scale
         }).then((model) => {
           viewer.scene.primitives.add(model);
           console.log(`✅ Modèle chargé : ${url}`);
-
+      
           // Apply color and transparency
           if (color) {
             model.color = Cesium.Color.fromCssColorString(color).withAlpha(0.7);
           }
+      
+          return model; // Return the loaded model
         }).catch((error) => {
           console.error(`❌ Erreur lors du chargement du modèle ${url} :`, error);
+          return null;
         });
       }
 
       // Add multiple models
-      loadModel(viewer, "./src/models/NouveauxBatiments.glb", { longitude: 7.3476689118966965, latitude: 46.22494365977509, altitude: 0 }, -90, "#008000", 1.0);
-      loadModel(viewer, "./src/models/Demolitions.glb", { longitude: 7.3476689118966965, latitude: 46.22494365977509, altitude: 0 }, -90, "#ff0000", 1.0);
-      loadModel(viewer, "./src/models/BatimentsExistants.glb", { longitude: 7.3476689118966965, latitude: 46.22494365977509, altitude: 0 }, -90, "#ffff00", 1.0);
+      let nouveauxBatiments, demolitions, batimentsExistants;
 
+      loadModel(viewer, "./src/models/NouveauxBatiments.glb", { longitude: 7.3476689118966965, latitude: 46.22494365977509, altitude: 0 }, -90, "#008000", 1.0)
+        .then((model) => {
+          nouveauxBatiments = model;
+          document.getElementById("toggleNouveauxBatiments").addEventListener("change", (event) => {
+            if (nouveauxBatiments) {
+              nouveauxBatiments.show = event.target.checked;
+            }
+          });
+        });
+      
+      loadModel(viewer, "./src/models/Demolitions.glb", { longitude: 7.3476689118966965, latitude: 46.22494365977509, altitude: 0 }, -90, "#ff0000", 1.0)
+        .then((model) => {
+          demolitions = model;
+          document.getElementById("toggleDemolitions").addEventListener("change", (event) => {
+            if (demolitions) {
+              demolitions.show = event.target.checked;
+            }
+          });
+        });
+      
+      loadModel(viewer, "./src/models/BatimentsExistants.glb", { longitude: 7.3476689118966965, latitude: 46.22494365977509, altitude: 0 }, -90, "#ffff00", 1.0)
+        .then((model) => {
+          batimentsExistants = model;
+          document.getElementById("toggleBatimentsExistants").addEventListener("change", (event) => {
+            if (batimentsExistants) {
+              batimentsExistants.show = event.target.checked;
+            }
+          });
+        });
       // Add the TopBoundary 3D Tileset
-      const tileset = new Cesium.Cesium3DTileset({
+      const topBoundarytileset = new Cesium.Cesium3DTileset({
         url: "./src/models/TopBoundary/tileset.json"
       });
 
-      tileset.readyPromise
+      topBoundarytileset.readyPromise
         .then(() => {
           console.log("✅ TopBoundary tileset chargé");
-          viewer.scene.primitives.add(tileset);
+          viewer.scene.primitives.add(topBoundarytileset);
 
         // Tileset styling
-        tileset.style = new Cesium.Cesium3DTileStyle({
-          color: "color('#87ceeb', 0.8)",
+        topBoundarytileset.style = new Cesium.Cesium3DTileStyle({
+          color: "color('#87ceeb', 1.0)",
           show: "true",
         });
         })
@@ -99,7 +129,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Bâtiments 3D
         const buildingsTileset = viewer.scene.primitives.add(
           new Cesium.Cesium3DTileset({
-            url: "https://3d.geo.admin.ch/ch.swisstopo.swissbuildings3d.3d/v1/tileset.json"
+            url: "https://3d.geo.admin.ch/ch.swisstopoBati.swissbuildings3d.3d/v1/tileset.json"
           })
         );
         // Wait for the buildings tileset to be ready
@@ -111,8 +141,8 @@ document.addEventListener('DOMContentLoaded', function () {
           })
           .catch((error) => {
             console.error("❌ Erreur chargement bâtiments :", error);
-
           });
+
         // Végétation 3D
         const vegetationTileset = viewer.scene.primitives.add(
           new Cesium.Cesium3DTileset({
@@ -127,6 +157,37 @@ document.addEventListener('DOMContentLoaded', function () {
           })
           .catch((error) => {
             console.error("❌ Erreur chargement végétation :", error);
+          });
+
+          // TOC Event Listeners
+          // Toggle visibility for custom models
+          document.getElementById("toggleNouveauxBatiments").addEventListener("change", (event) => {
+            if (nouveauxBatiments) {
+              nouveauxBatiments.show = event.target.checked;
+            }
+          });
+          
+          document.getElementById("toggleDemolitions").addEventListener("change", (event) => {
+            if (demolitions) {
+              demolitions.show = event.target.checked;
+            }
+          });
+          
+          document.getElementById("toggleBatimentsExistants").addEventListener("change", (event) => {
+            if (batimentsExistants) {
+              batimentsExistants.show = event.target.checked;
+            }
+          });
+
+          // Toggle visibility for TopBoundary, Buildings, and Vegetation
+          document.getElementById("toggleTopBoundary").addEventListener("change", (event) => {
+            topBoundarytileset.show = event.target.checked;
+          });
+          document.getElementById("toggleBuildings").addEventListener("change", (event) => {
+            buildingsTileset.show = event.target.checked;
+          });
+          document.getElementById("toggleVegetation").addEventListener("change", (event) => {
+            vegetationTileset.show = event.target.checked;
           });
 
       // Fly to initial camera position
